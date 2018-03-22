@@ -1,0 +1,10 @@
+version: '2.1'
+
+services:
+  gpu_book_system:
+    image: server_booking_system
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - 8080:8080

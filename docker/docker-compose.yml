@@ -1,0 +1,12 @@
+version: '2.1'
+
+services:
+  server_booking_system:
+    image: server_booking_system
+    build: .
+    tty: true
+    ports:
+      - 27017:27017
+      - 28017:28017
+    volumes: 
+      - ../server_booking_system:/server_booking_system
