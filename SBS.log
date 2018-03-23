@@ -1,0 +1,25 @@
+test
+test
+test
+test
+test
+Starting SBS
+[2018-03-23 15:52:01,827] INFO : Starting SBS
+[2018-03-23 15:53:13,456] INFO in run: Starting SBS
+[2018-03-23 15:53:44,388] DEBUG in run: Starting SBS
+[2018-03-23 15:55:59,378] DEBUG in run: Starting SBS
+[2018-03-23 16:19:44,521] INFO in run: [users] existing in database, it will be cleaned up....
+[2018-03-23 16:19:44,533] INFO in run: Done!
+[2018-03-23 16:19:46,759] INFO in run: [users] existing in database, it will be cleaned up....
+[2018-03-23 16:19:46,764] INFO in run: Done!
+[2018-03-23 16:20:07,452] INFO in run: Done!
+[2018-03-23 16:20:27,167] INFO in run: [users] existing in database, it will be cleaned up....
+[2018-03-23 16:20:27,171] INFO in run: Done!
+[2018-03-23 16:21:56,308] INFO in run: [users] existing in database, it will be cleaned up....
+[2018-03-23 16:21:56,313] INFO in run: Done!
+[2018-03-23 16:25:50,471] INFO in run: [users] existing in database, it will be cleaned up....
+[2018-03-23 16:25:50,477] INFO in run: Insterting default admin account. 
+[2018-03-23 16:25:50,478] INFO in run: Done!
+[2018-03-23 17:05:09,186] INFO in db: Connected to database
+[2018-03-23 17:05:56,117] INFO in db: Connected to database
+[2018-03-23 17:06:25,199] INFO in db: Connected to database
