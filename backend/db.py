@@ -1,36 +1,42 @@
-import pymongo
 import logging
+from mongoengine import connect, StringField, Document
 
-_client = pymongo.MongoClient()
-_logger = logging.getLogger()
-_collection = pymongo.mongo_client.database.Collection
+_logger = logging.getLogger("SBS_db")
 
 
-def setDatabase(client, logger):
-    global _client
+def config_connect(logger, database_name="SBS"):
     global _logger
-    _client = client
-    _logger = logger
+    _logger = logger  # type: logging.Logger
+    connect(database_name)
 
 
-class RootDB(object):
-    """
-        Base class of mongodb model. RootDB.client can be set from global namespace of db.py to initlize all model's connection
-    """
+class User(Document):
+    username = StringField(required=True, max_length=200)
+    password = StringField(required=True)
 
-    def __init__(self):
-        self.sbs: _collection = _client.sbs
-        self.logger = _logger
-        self.logger.debug("init RootBD class")
+    def login(username, password):
+        users = User.objects(username=username, password=password)
+        if users.count() == 0:
+            _logger.debug(f"Logging failed with username '{username}'")
+            return None
+        elif users.count() == 1:
+            return users[0]
+        else:
+            try:
+                raise UserError("Mutilple User found, please check database")
+            except UserError as e:
+                print(e)
+
+    def get_user(username=None, uid=None):
+        users = None
+        if username is not None:
+            users = User.objects(username=username)
+        elif uid is not None:
+            users = User.objects(uid=uid)
+        if users.count() > 0:
+            return users[0]
+        return None
 
 
-class User(dict):
-
-    def __init__(self):
-        self.user: _collection = RootDB.sbs.user
-
-    def _insert_user(self):
-        self.user.insert()
-
-    def show_client(self):
-        print(self.db.sbs)
+class UserError(Exception):
+    pass

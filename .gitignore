@@ -2,3 +2,4 @@
 /dist/
 .vscode
 /server_booking_system/db/
+.DS_Store

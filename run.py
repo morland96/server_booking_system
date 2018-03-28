@@ -1,6 +1,5 @@
 #!python3
 from flask import Flask, render_template
-from backend.db import Database
 import click
 import logging
 import logging.handlers
@@ -24,7 +23,7 @@ log = app.logger.info
 d_log = app.logger.debug
 
 client = pymongo.MongoClient()
-db = client.sbs
+db = client.SBS
 
 
 @click.command()
@@ -56,10 +55,8 @@ def cli(version, initdb, cleandb, level):
         log("Done!")
 
     elif cleandb:
-        database = Database(client, app.logger)
-        User = database.User
-        u = User()
-        u.test()
+        if "SBS" in client.database_names():
+            client.drop_database("SBS")
         pass
     else:
         # logger.setLevel(level)
