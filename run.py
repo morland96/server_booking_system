@@ -1,14 +1,20 @@
 #!python3
-from flask import Flask, render_template
+from flask import Flask, render_template, request, jsonify
+from app.db import User, config_connect
+import json
 import click
 import logging
 import logging.handlers
 import sys
 import pymongo
-app = Flask(__name__,
-            static_folder="./dist/static",
-            template_folder="./dist")
+from app.config import Config
+flask_app = Flask(__name__,
+                  static_folder="./dist/static",
+                  template_folder="./dist")
 __version__ = '1.0'
+
+# Set config
+flask_app.config.from_object(Config())
 
 # Add StremHandler and FileHandler
 stream_handler = logging.StreamHandler(sys.stdout)
@@ -16,13 +22,14 @@ file_handler = logging.FileHandler("SBS.log")
 file_handler.setFormatter(logging.Formatter(
     '[%(asctime)s] %(levelname)s in %(module)s: %(message)s'
 ))
-app.logger.addHandler(stream_handler)
-app.logger.addHandler(file_handler)
-app.logger.setLevel(logging.DEBUG)
-log = app.logger.info
-d_log = app.logger.debug
+flask_app.logger.addHandler(stream_handler)
+flask_app.logger.addHandler(file_handler)
+flask_app.logger.setLevel(logging.DEBUG)
+log = flask_app.logger.info
+d_log = flask_app.logger.debug
 
 client = pymongo.MongoClient()
+config_connect(flask_app.logger)
 db = client.SBS
 
 
@@ -60,19 +67,92 @@ def cli(version, initdb, cleandb, level):
         pass
     else:
         # logger.setLevel(level)
-        d_log("Starting SBS")
         start_app()
 
 
 def start_app():
-    app.run(debug=True)
+    flask_app.run(debug=True)
 
 
-@app.route('/', defaults={'path': ''})
-@app.route('/<path:path>')
+@flask_app.route('/', defaults={'path': ''})
+@flask_app.route('/<path:path>')
 def catch_all(path):
     return render_template("index.html")
 
 
+"""
+Group of API for users.
+POST    /api/v1.0/users         Register a user
+DELETE  /api/v1.0/<username>    Delete a user  
+UPDATE  /api/v1.0/<username>    Update a user need token
+POST    /api/v1.0/login         Login and get a token for request query
+POST    /api/v1.0/test_token    Check token if it's works
+"""
+
+
+@flask_app.route('/api/v1.0/users', methods=['POST'])
+def register_user():
+    data = request.get_data()
+    data = json.loads(data)
+    username = data['username']
+    password = data['password']
+    users = User.objects(username=username, password=password)
+    if len(users) > 0:
+        return jsonify({'id': -1}), 409
+    else:
+        user = User()
+        user.username = username
+        user.password = password
+        user.save()
+        return jsonify(user.get_dict()), 201
+
+
+@flask_app.route('/api/v1.0/users/<string:username>', methods=['DELETE'])
+def delete_user(username):
+    user = User.objects(username=username)
+    if len(user) == 0:
+        return jsonify({'status': -1}), 404
+    user.delete()
+    return jsonify({'status': 0})
+
+
+@flask_app.route('/api/v1.0/users/<string:username>', methods=['PUT'])
+def update_user(username):
+    user = User.verify_auth_token(
+        request.headers.get('Authentication-Token'))
+    if user.username == username:
+        new_user = json.loads(request.get_data())
+        user.update_with_dict(new_user)
+        return jsonify(user.get_dict()), 200
+    else:
+        return 403
+
+
+@flask_app.route('/api/v1.0/login', methods=['POST'])
+def login():
+    data = request.get_data()
+    data = json.loads(data)
+    username = data['username']
+    password = data['password']
+    user = User.login(username, password)
+    if user is not None:
+        return jsonify({"user": user.get_dict(), "token": user.token})
+    else:
+        return jsonify({"id": 0}), 401
+
+
+@flask_app.route('/api/v1.0/test/token', methods=['POST'])
+def test_token():
+    user = User.verify_auth_token(
+        request.headers.get('Authentication-Token'))
+    if user is not None:
+        return jsonify(user.get_dict()), 200
+    else:
+        return jsonify("{}"), 200
+
+
+"""
+Group of API for booking
+"""
 if __name__ == '__main__':
     cli()
