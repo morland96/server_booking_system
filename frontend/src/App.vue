@@ -1,41 +1,51 @@
 <template>
   <div id="app">
-    <el-container>
-      <el-header class="header">
-        <vheader/>
-      </el-header>
-      <el-container>
-    <el-aside width="200px">
-      <navmenu></navmenu>
-    </el-aside>
-  <el-main>
-   <router-view/>
-  </el-main>
-  </el-container>
-</el-container>
+    <div class="root">
+      <div>
+        <el-container v-if="is_login">
+          <el-header class="header">
+            <vheader/>
+          </el-header>
+          <el-container>
+            <el-aside width="200px" v-if="is_login">
+              <navmenu></navmenu>
+            </el-aside>
+            <el-main>
+              <router-view/>
+            </el-main>
+          </el-container>
+        </el-container>
+      </div>
+    </div>
   </div>
 </template>
 <script>
 import NavMenu from '@/components/NavMenu'
 import Header from '@/components/Header'
+import Login from '@/components/Login'
 
 export default {
   name: 'App',
+  data: function () {
+    return {
+      is_login: false
+    }
+  },
   components: {
     'navmenu': NavMenu,
-    'vheader': Header
+    'vheader': Header,
+    'login': Login
   }
-
 }
 
 </script>
 
 <style>
-#app {
-  font-family: "Avenir", Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-align: center;
-  color: #2c3e50;
-}
+  #app {
+    font-family: "Avenir", Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-align: center;
+    color: #2c3e50;
+  }
 </style>

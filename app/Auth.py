@@ -39,7 +39,7 @@ class Auth():
         """
         try:
             payload = jwt.decode(auth_token, app.config['SECRET_KEY'], options={
-                                 'Verify_exp': False})
+                'Verify_exp': False})
             if ('data' in payload and 'username' in payload['data']):
                 return payload
             else:

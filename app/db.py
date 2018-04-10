@@ -1,9 +1,12 @@
 import logging
-from mongoengine import connect, StringField, Document, IntField, DateTimeField, ReferenceField
+from mongoengine import connect, StringField, Document, IntField, DateTimeField, ReferenceField, BooleanField, Q, \
+    CASCADE, NULLIFY
 import time
-import datetime
+from datetime import datetime
 from .Auth import Auth
+from flask import current_app as app
 
+time_format = '%Y-%m-%dT%H:%M:%S.%f'
 _logger = logging.getLogger("SBS_db")
 
 
@@ -16,12 +19,21 @@ def config_connect(logger, database_name="SBS"):
 class User(Document):
     """
     Class for binding users' information in database. It also provides API to get token for Authentication.
-    TODO: make privilege usable.
+    Attributes:
+        reservations (User): reservations of this user
+        privilege (Int): privilege of user
+                        0 -- Simple user
+                        1 -- Admin
     """
     allow_change = ["password"]
     username = StringField(required=True, max_length=200)
     password = StringField(required=True)
-    privilege = IntField(required=False)
+    privilege = IntField(required=False, default=0)
+
+    @property
+    def reservations(self):
+        reservations = Reservation.objects(owner=self)
+        return reservations
 
     def update_with_dict(self, user: dict):
         for key in user:
@@ -31,13 +43,6 @@ class User(Document):
 
     @staticmethod
     def login(username, password):
-        """
-        Login and get toekn
-        :param username:
-        :param password:
-        :return: :class:`User <User>` object, string| None
-        :rtype: User or None
-        """
         users = User.objects(username=username, password=password)
         if users.count() == 0:
             _logger.debug(
@@ -68,11 +73,21 @@ class User(Document):
 
     def get_dict(self):
         return {"username": self.username,
-                "uid": str(self.id)
+                "uid": str(self.id),
+                "privilege": str(self.privilege)
                 }
 
     @staticmethod
     def verify_auth_token(token):
+        """
+        Verify auth token and return owner of this token.
+        Args:
+            token (str): Input token
+
+        Returns:
+            user (User): Owner of this token.
+
+        """
         playload = Auth.decode_auth_token(token)
         users = User.objects(username=playload['data']['username'])
         if len(users) > 0:
@@ -82,18 +97,78 @@ class User(Document):
 
 
 class Reservation(Document):
-    """ Class for bingding reservations' information in database
+    """ Class for binding reservations' information in database
     """
-    booktime = DateTimeField(default=datetime.now(), required=True)
+    owner = ReferenceField(User, reverse_delete_rule=CASCADE)
+    book_time = DateTimeField(default=datetime.now(), required=True)
     start_time = DateTimeField(default=datetime.now(), required=True)
     end_time = DateTimeField(default=datetime.now(), required=True)
-    owner = ReferenceField()
+    detail = StringField(required=False)
+    allowed = BooleanField(required=False)
 
-    def reserve():
-        pass
+    def get_dict(self):
+        return {"id": str(self.id),
+                "owner": self.owner.username,
+                "start_time": self.start_time.isoformat(),
+                "end_time": self.end_time.isoformat(),
+                "allowed": self.allowed}
+
+    @staticmethod
+    def reserve(owner: User, start_time: str, end_time: str, detail: str = ""):
+        """
+        Create a reservation
+        Args:
+            owner (User): owner of this reservation
+            start_time (datetime): start time of this reservation
+            end_time (datetime): end time of this reservation, must later than start_time
+            detail (str): Detail information
+
+        Returns:
+            reservation (Reservation): return this reservation, or None if can't create it
+
+        """
+        start_time = datetime.strptime(start_time, time_format)
+        end_time = datetime.strptime(end_time, time_format)
+        reservations = Reservation.get_between(start_time, end_time)
+        if len(reservations) > 0:
+            # Already has reservations
+            return None
+        else:
+            reservation = Reservation()
+            reservation.owner = owner
+            reservation.start_time = start_time
+            reservation.end_time = end_time
+            reservation.detail = detail
+            reservation.save()
+            _logger.debug(
+                f"Create a reservation by owner {owner.username}, from {start_time} to {end_time}")
+            return reservation
+
+    @staticmethod
+    def get_between(start_time, end_time):
+        """
+        Return all reservations between start_time and end_time
+        Args:
+            start_time (datetime):
+            end_time (datetime):
+
+        Returns list(Reservation):
+
+        """
+        reservations = Reservation.objects(
+            (Q(start_time__gte=start_time) & Q(start_time__lt=end_time))
+            | Q(end_time__lte=end_time) & Q(end_time__gt=start_time))
+        return reservations
+
+    def accept(self):
+        self.allowed = True
+        self.save()
+
+    def reject(self):
+        self.allowed = 0
 
 
 class UserError(Exception):
-    """ Error to raise while search users' information in database 
+    """ Error to raise while search users' information in database. 
     """
     pass
