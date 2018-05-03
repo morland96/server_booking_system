@@ -153,6 +153,18 @@ def login():
         return jsonify({"id": 0}), 401
 
 
+@flask_app.route('/api/v1.0/user', methods=['GET'])
+def get_user_info():
+    user = User.verify_auth_token(
+        request.headers.get('Authentication-Token'))
+    if user == -1:
+        return jsonify({'error': '未登录'}), 401
+    if user is not None:
+        return jsonify(user.get_dict()), 201
+    else:
+        return jsonify({}), 403
+
+
 @flask_app.route('/api/v1.0/test/token', methods=['POST'])
 def test_token():
     user = User.verify_auth_token(
@@ -174,13 +186,15 @@ def create_reservation():
     user = User.verify_auth_token(request.headers.get('Authentication-Token'))
     if user is not None:
         data = json.loads(request.get_data())
-        r = Reservation.reserve(user, data['start_time'], data['end_time'])
-        return jsonify(r.get_dict()), 201
+        r = Reservation.reserve(user, data['start_time'], data['end_time'], data['detail'])
+        if r is not None:
+            return jsonify(r.get_dict()), 201
+        return jsonify({"error": "预约失败，时间冲突"}), 403
     else:
         return jsonify({}), 403
 
 
-@flask_app.route('/api/v1.0/reservations/<string:r_id>/allowed', methods=['POST'])
+@flask_app.route('/api/v1.0/reservations/<string:r_id>/approve', methods=['POST'])
 def approve_reservation(r_id):
     user = User.verify_auth_token(request.headers.get('Authentication-Token'))
     if user is not None:
@@ -195,10 +209,59 @@ def approve_reservation(r_id):
             return jsonify({"msg": "Not permitted"}), 403
 
 
+@flask_app.route('/api/v1.0/reservations/<string:r_id>/reject', methods=['POST'])
+def reject(r_id):
+    user = User.verify_auth_token(request.headers.get('Authentication-Token'))
+    if user is not None:
+        if user.privilege > 0:  # Check if user is an administrator.
+            r = Reservation.objects(id=r_id)
+            if len(r) == 0:
+                return jsonify({"msg": "Id not exist"}), 404
+            else:
+                r[0].reject()
+                return jsonify(r[0].get_dict()), 201
+        else:
+            return jsonify({"msg": "Not permitted"}), 403
+
+
+@flask_app.route('/api/v1.0/reservations/<string:r_id>', methods=['DELETE'])
+def delete_reservation(r_id):
+    user = User.verify_auth_token(request.headers.get('Authentication-Token'))
+    if user is not None:
+        r = Reservation.objects(id=r_id)
+        if len(r) == 0:
+            return jsonify({}), 404
+        if r[0].owner == user:
+            r.delete()
+            return jsonify({}), 204
+    return jsonify({"msg": "Not permitted"}), 403
+
+
 @flask_app.route('/api/v1.0/reservations', methods=['GET'])
 def get_all_reservations():
     l_reservations = []
     reservations = Reservation.objects()
+    for r in reservations:
+        l_reservations.append(r.get_dict())
+    return jsonify(l_reservations), 200
+
+
+@flask_app.route('/api/v1.0/<string:username>/reservations', methods=['GET'])
+def get_user_reservations(username):
+    l_reservations = []
+    users = User.objects(username=username)
+    if len(users) == 0:
+        return jsonify({"msg": "未知用户"}), 404
+    reservations = Reservation.objects(owner=users[0])
+    for r in reservations:
+        l_reservations.append(r.get_dict())
+    return jsonify(l_reservations), 200
+
+
+@flask_app.route('/api/v1.0/reservations/pending', methods=['GET'])
+def get_pending_reservations():
+    l_reservations = []
+    reservations = Reservation.objects(allowed=None)
     for r in reservations:
         l_reservations.append(r.get_dict())
     return jsonify(l_reservations), 200

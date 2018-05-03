@@ -2,12 +2,12 @@
   <div id="app">
     <div class="root">
       <div>
-        <el-container v-if="is_login">
-          <el-header class="header">
+        <el-container>
+          <el-header class="header" v-show="is_login">
             <vheader/>
           </el-header>
           <el-container>
-            <el-aside width="200px" v-if="is_login">
+            <el-aside width="200px" v-show="is_login">
               <navmenu></navmenu>
             </el-aside>
             <el-main>
@@ -26,26 +26,25 @@ import Login from '@/components/Login'
 
 export default {
   name: 'App',
-  data: function () {
-    return {
-      is_login: false
+  computed: {
+    is_login () {
+      return this.$store.getters.token
     }
   },
   components: {
-    'navmenu': NavMenu,
-    'vheader': Header,
-    'login': Login
+    navmenu: NavMenu,
+    vheader: Header,
+    login: Login
   }
 }
-
 </script>
 
 <style>
-  #app {
-    font-family: "Avenir", Helvetica, Arial, sans-serif;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    text-align: center;
-    color: #2c3e50;
-  }
+#app {
+  font-family: "Avenir", Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-align: center;
+  color: #2c3e50;
+}
 </style>

@@ -4,3 +4,7 @@
 /server_booking_system/db/
 .DS_Store
 SBS.log
+/node_modules/
+.idea/
+SBS.log
+*.db

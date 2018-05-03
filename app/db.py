@@ -89,6 +89,8 @@ class User(Document):
 
         """
         playload = Auth.decode_auth_token(token)
+        if playload == -1:
+            return -1
         users = User.objects(username=playload['data']['username'])
         if len(users) > 0:
             return users[0]
@@ -109,8 +111,9 @@ class Reservation(Document):
     def get_dict(self):
         return {"id": str(self.id),
                 "owner": self.owner.username,
-                "start_time": self.start_time.isoformat(),
-                "end_time": self.end_time.isoformat(),
+                "start_time": self.start_time.isoformat()+'Z',
+                "end_time": self.end_time.isoformat()+'Z',
+                "detail": self.detail,
                 "allowed": self.allowed}
 
     @staticmethod
@@ -127,8 +130,8 @@ class Reservation(Document):
             reservation (Reservation): return this reservation, or None if can't create it
 
         """
-        start_time = datetime.strptime(start_time, time_format)
-        end_time = datetime.strptime(end_time, time_format)
+        start_time = datetime.strptime(start_time[:-1], time_format)
+        end_time = datetime.strptime(end_time[:-1], time_format)
         reservations = Reservation.get_between(start_time, end_time)
         if len(reservations) > 0:
             # Already has reservations
@@ -155,9 +158,9 @@ class Reservation(Document):
         Returns list(Reservation):
 
         """
-        reservations = Reservation.objects(
+        reservations = Reservation.objects((
             (Q(start_time__gte=start_time) & Q(start_time__lt=end_time))
-            | Q(end_time__lte=end_time) & Q(end_time__gt=start_time))
+            | (Q(end_time__lte=end_time) & Q(end_time__gt=start_time))) & (Q(allowed__ne=False)))
         return reservations
 
     def accept(self):
@@ -165,7 +168,8 @@ class Reservation(Document):
         self.save()
 
     def reject(self):
-        self.allowed = 0
+        self.allowed = False
+        self.save()
 
 
 class UserError(Exception):

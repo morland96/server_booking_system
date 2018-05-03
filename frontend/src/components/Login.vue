@@ -32,7 +32,6 @@
 </style>
 
 <script>
-import Axios from 'axios'
 export default {
   data () {
     return {
@@ -43,16 +42,33 @@ export default {
     }
   },
   methods: {
-    onSubmit () {
-      console.log('submit!')
-    },
     submit () {
-      Axios.post('/api/v1.0/sessions', {
-        username: this.form.username,
-        password: this.form.password
-      }).then(function (response) {
-        console.log(response)
-      })
+      this.axios
+        .post('/api/v1.0/sessions', {
+          username: this.form.username,
+          password: this.form.password
+        })
+        .then(
+          function (response) {
+            let token = response['data']['token']
+            let user = response['data']['user']
+            let redirect = decodeURIComponent(
+              this.$route.query.redirect || '/'
+            )
+            this.$store.commit('login', { token: token, user: user })
+            this.$router.push({
+              path: redirect,
+              force: true
+            })
+          }.bind(this)
+        )
+        .catch(error => {
+          console.log(error.response)
+          this.$message({
+            type: 'error',
+            message: `用户名或密码错误`
+          })
+        })
     }
   }
 }
